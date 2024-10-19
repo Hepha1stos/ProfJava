@@ -10,50 +10,83 @@ import java.sql.Statement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-
 public class DBManager {
 
     private Connection conn;
     private String dbPath;
-    private static final Logger LOGGER = LogManager.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger(DBManager.class);
 
     /**
-     * Constructor: Connects to the database and creates tables if the database did
-     * not exists
+     * Constructor: Establishes a connection to the database and creates tables if the database
+     * does not exist.
      */
     public DBManager() {
-       
-
         try {
-            File classFile = new File(DBManager.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            File projectRoot = classFile.getParentFile().getParentFile().getParentFile();
-            dbPath = new File(projectRoot, "database.db").getAbsolutePath();
-            String url = "jdbc:sqlite:" + dbPath;
-            
+            initializeDBPath();
 
-            conn = DriverManager.getConnection(url);
+            String url = "jdbc:sqlite:" + getDBPath();
 
-            if (conn != null) {
-                LOGGER.info("Connection to database at {} established", dbPath);
+            initializeConnection(url);
+
+            if (getConnection() != null) {
+                LOGGER.info("Connection to database at {} established.", getDBPath());
             }
-            this.create_tables();
-        } catch (URISyntaxException e) {
-            LOGGER.error("Error while resolving Projectpath: {}",e.getMessage());
+            createTables();
         } catch (SQLException e) {
-            LOGGER.error("Error while connecting to database: {} " ,e.getMessage());
-
+            LOGGER.error("Error while connecting to the database:", e);
         }
     }
 
-
-    public Connection getConnection(){
+    /**
+     * Retrieves the current database connection.
+     *
+     * @return Connection object
+     */
+    public Connection getConnection() {
         return this.conn;
     }
 
     /**
-     * creates tables if database.db is new created
+     * Sets a new database connection based on the provided URL.
+     *
+     * @param url JDBC URL of the database
      */
-    private void create_tables() {
+    public void setConnection(String url) {
+        try {
+            this.conn = DriverManager.getConnection(url);
+            LOGGER.info("Database connection set to {}.", url);
+        } catch (SQLException e) {
+            LOGGER.error("Error while setting the database connection:", e);
+        }
+    }
+
+    /**
+     * Retrieves the path to the database.
+     *
+     * @return Path as a String
+     */
+    public String getDBPath() {
+        return this.dbPath;
+    }
+
+    /**
+     * Sets the path to the database file.
+     *
+     * @param projectRoot The root directory of the project
+     */
+    public void setDBPath(File projectRoot) {
+        try {
+            this.dbPath = new File(projectRoot, "database.db").getAbsolutePath();
+            LOGGER.info("Database path set to {}.", this.dbPath);
+        } catch (Exception e) {
+            LOGGER.error("Error while setting the database path:", e);
+        }
+    }
+
+    /**
+     * Creates the necessary tables if they do not exist.
+     */
+    private void createTables() {
         String createProcessTable = "CREATE TABLE IF NOT EXISTS process (\n"
                 + "    id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
                 + "    pid INTEGER NOT NULL,\n"
@@ -61,7 +94,7 @@ public class DBManager {
                 + "    command_line TEXT,\n"
                 + "    start_time DATETIME\n"
                 + ");";
-    
+
         String createProcessMetricsTable = "CREATE TABLE IF NOT EXISTS process_metrics (\n"
                 + "    id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
                 + "    process_id INTEGER NOT NULL,\n"
@@ -70,18 +103,68 @@ public class DBManager {
                 + "    cpu_usage REAL NOT NULL,\n"
                 + "    FOREIGN KEY (process_id) REFERENCES process(id)\n"
                 + ");";
-    
-    
-        try (Statement stmt = conn.createStatement()) {
-            
+
+        try (Statement stmt = getConnection().createStatement()) {
+
             stmt.execute(createProcessTable);
-            LOGGER.info("Created process table");
-    
+            LOGGER.info("Table 'process' created or already exists.");
+
             stmt.execute(createProcessMetricsTable);
-            LOGGER.info("Created process_metric table");
+            LOGGER.info("Table 'process_metrics' created or already exists.");
 
         } catch (SQLException e) {
-            LOGGER.error("Error while creating Tables: {}", e.getMessage());
+            LOGGER.error("Error while creating tables:", e);
+        }
+    }
+
+    /**
+     * Closes the database connection.
+     */
+    public void close() {
+        if (getConnection() != null) {
+            try {
+                getConnection().close();
+                LOGGER.info("Database connection closed.");
+            } catch (SQLException e) {
+                LOGGER.error("Error while closing the database connection:", e);
+            }
+        }
+    }
+
+    /**
+     * Initializes the database path using a private method.
+     */
+    private void initializeDBPath() {
+        try {
+            File classFile = new File(DBManager.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            File projectRoot = classFile.getParentFile().getParentFile().getParentFile();
+            setDBPath(projectRoot);
+        } catch (URISyntaxException e) {
+            LOGGER.error("Error while resolving the project path:", e);
+        }
+    }
+
+    /**
+     * Initializes the database connection using a private method.
+     *
+     * @param url JDBC URL of the database
+     * @throws SQLException if a database access error occurs
+     */
+    private void initializeConnection(String url) throws SQLException {
+        this.conn = DriverManager.getConnection(url);
+        LOGGER.info("Database connection initialized.");
+    }
+
+    /* Main methods */
+
+    public void execute(String sql){
+        try {
+            Statement stmt = this.getConnection().createStatement();
+            stmt.execute(sql);
+            this.getConnection().close();
+            LOGGER.info("Executed query: {}", sql);
+        } catch (SQLException e) {
+            LOGGER.error("Error while trying to execute statement: {}", e);
         }
     }
     
