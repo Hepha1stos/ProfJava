@@ -14,6 +14,6 @@ public class App
         System.out.println( "Hello World!" );
         DBManager t = new DBManager();
         ProcessManager pm = new ProcessManager();
-        pm.showAllProcesses();
+        pm.getProcessNames();
     }
 }

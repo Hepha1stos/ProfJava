@@ -1,16 +1,29 @@
 package com.moritz.process;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import oshi.SystemInfo;
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 
+
+
 public class ProcessManager {
 
+    private List<String> processNames = new ArrayList<>();
+    
     public void showAllProcesses() {
         SystemInfo systemInfo = new SystemInfo();
         OperatingSystem os = systemInfo.getOperatingSystem();
@@ -40,4 +53,32 @@ public class ProcessManager {
 
     }
 }
+
+
+    public void getProcessNames(){
+        try {
+            InputStream inputStream = getClass().getClassLoader().getResourceAsStream("process.json");
+            if (inputStream == null) {
+                System.out.println("Datei nicht gefunden!");
+                return;
+            }
+            JSONParser parser = new JSONParser();
+            Object obj = parser.parse(new InputStreamReader(inputStream));
+
+            JSONArray json = (JSONArray) obj;
+            JSONObject obj1 = (JSONObject) json.get(0);
+
+            JSONArray erg = (JSONArray) obj1.get("names");
+
+            for (Object nameObj : erg){
+                String name = (String) nameObj;
+                this.processNames.add(name);
+            System.out.println(this.processNames);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
 }
